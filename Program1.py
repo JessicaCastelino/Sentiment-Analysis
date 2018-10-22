@@ -1,9 +1,9 @@
 !pip install tweepy
-!pip install elasticsearch
 import json
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from tweepy import Stream
+from textblob import TextBlob
 from elasticsearch import Elasticsearch
 import certifi
 import time
@@ -19,8 +19,15 @@ es = Elasticsearch(
       ca_certs=certifi.where(),
 )
 
+
+
 def clean_tweet(tweet):
+    stoplist=["http","https","amp","RT","the"] 
+    for s in stoplist:
+        tweet=tweet.replace(s, "")
     return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
+
+
 
 consumer_key = "M6O2HMC2QBgB0M3ISmmvNBT0v"
 consumer_secret = "LBfOuZmnDwcWQYWQEz1tz89rgyIHEaQkkzORFkNwhK2660qG62"
@@ -29,6 +36,7 @@ access_secret = "VhAchiXF9mGKmxlKESKYds9yQTyxOQzBYdFs9g8IEUdIh"
 
 class TweetStreamListener(StreamListener):
     
+
     def __init__(self, time_limit=500):
         self.start_time = time.time()
         self.limit = time_limit
@@ -38,7 +46,7 @@ class TweetStreamListener(StreamListener):
     def on_data(self, data):
         if (time.time() - self.start_time) < self.limit:
             dict_data = json.loads(data)
-            print(dict_data['text'])
+            print(clean_tweet(dict_data['text']))
             es.index(index="mlib3",doc_type="sentimentanalysismlib",body={"id": dict_data["id_str"],
                         "author": dict_data["user"]["screen_name"], 
                         "date": dict_data["created_at"],
@@ -54,7 +62,6 @@ class TweetStreamListener(StreamListener):
 
 if __name__ == '__main__':
 
-    
     # create instance of the tweepy tweet stream listener
     listener = TweetStreamListener()
     
@@ -65,5 +72,5 @@ if __name__ == '__main__':
     # create instance of the tweepy stream
     stream = Stream(auth, listener)
 
-    # search twitter for "congress" keyword
+    # search twitter for "food" keyword
     stream.filter(track=['food'])
